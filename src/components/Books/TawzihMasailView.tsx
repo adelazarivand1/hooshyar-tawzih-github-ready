@@ -32,16 +32,7 @@ interface TawzihMasailViewProps {
   initialItemId?: string;
 }
 
-type ViewStep = 'volumes' | 'sections' | 'issues' | 'reader' | 'pdf';
-
-// The supplied, complete volumes are the authoritative book content. The
-// smaller JSON index remains only as a convenience for fast navigation.
-const PDF_VOLUMES: Record<number, { url: string; pages: number }> = {
-  1: { url: '/books/tawzih/persian_jame_1.pdf', pages: 784 },
-  2: { url: '/books/tawzih/persian_jame_2.pdf', pages: 600 },
-  3: { url: '/books/tawzih/persian_jame_3.pdf', pages: 764 },
-  4: { url: '/books/tawzih/persian_jame_4.pdf', pages: 764 }
-};
+type ViewStep = 'volumes' | 'sections' | 'issues' | 'reader';
 
 export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
   onBackToShelf,
@@ -57,13 +48,6 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [bookmarked, setBookmarked] = useState<boolean>(false);
   const [visibleIssuesCount, setVisibleIssuesCount] = useState<number>(50);
-  const [pdfPage, setPdfPage] = useState<number>(1);
-
-  const openCompleteVolume = (volume: number) => {
-    setSelectedVolume(volume);
-    setPdfPage(1);
-    setCurrentStep('pdf');
-  };
 
   // Initialize with initialItemId if provided
   useEffect(() => {
@@ -224,88 +208,10 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
     }
   };
 
-  // Complete, unaltered edition. This is the primary book view.
-  if (currentStep === 'pdf' && selectedVolume) {
-    const pdf = PDF_VOLUMES[selectedVolume];
-    return (
-      <div className="space-y-4 animate-fadeIn" dir="rtl">
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedVolume(null);
-              setSearchQuery('');
-              setCurrentStep('volumes');
-            }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs"
-          >
-            <ArrowRight className="w-4 h-4" />
-            <span>انتخاب جلد</span>
-          </button>
-          <span className="font-bold text-teal-700 dark:text-teal-300">
-            متن کامل و اصلی جلد {toPersianDigits(selectedVolume)}
-          </span>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            این همان نسخهٔ کامل و اصلی کتاب است و تمام صفحات، احکام و پاورقی‌های این جلد را دارد.
-            فهرست متنی پایین‌تر فقط نمایهٔ سریع است و جایگزین متن اصلی کتاب نیست.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setPdfPage(page => Math.max(1, page - 1))}
-              disabled={pdfPage === 1}
-              className="px-3 py-2 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200 disabled:opacity-40 text-xs font-bold"
-            >
-              صفحهٔ قبل
-            </button>
-            <label className="text-xs text-slate-700 dark:text-slate-200">
-              صفحه
-              <input
-                type="number"
-                min="1"
-                max={pdf.pages}
-                value={pdfPage}
-                onChange={event => {
-                  const page = Number(event.target.value);
-                  if (Number.isInteger(page) && page >= 1 && page <= pdf.pages) setPdfPage(page);
-                }}
-                className="w-20 mx-2 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-center"
-              />
-              از {toPersianDigits(pdf.pages)}
-            </label>
-            <button
-              type="button"
-              onClick={() => setPdfPage(page => Math.min(pdf.pages, page + 1))}
-              disabled={pdfPage === pdf.pages}
-              className="px-3 py-2 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200 disabled:opacity-40 text-xs font-bold"
-            >
-              صفحهٔ بعد
-            </button>
-            <a href={pdf.url} target="_blank" rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold">
-              باز کردن یا دریافت فایل اصلی
-            </a>
-          </div>
-        </div>
-        <iframe
-          key={`${selectedVolume}-${pdfPage}`}
-          src={`${pdf.url}#page=${pdfPage}&view=FitH`}
-          title={`توضیح المسائل جامع جلد ${selectedVolume} صفحه ${pdfPage}`}
-          className="w-full h-[75vh] min-h-[500px] bg-white rounded-2xl border border-slate-200 dark:border-slate-700"
-        />
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          اگر نمایشگر دستگاه‌تان PDF را باز نکرد، از دکمهٔ «باز کردن یا دریافت فایل اصلی» استفاده کنید.
-        </p>
-      </div>
-    );
-  }
-
   // STEP 4: READER VIEW
   if (currentStep === 'reader' && selectedItem) {
     return (
-      <div className="space-y-4 animate-fadeIn" dir="rtl">
+      <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
         {/* Navigation Bar */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
           <button
@@ -512,7 +418,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
     const displayedIssues = filteredSectionIssues.slice(0, visibleIssuesCount);
 
     return (
-      <div className="space-y-4 animate-fadeIn" dir="rtl">
+      <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
         {/* Navigation Bar */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
           <button
@@ -628,7 +534,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
     const showSearchResults = searchQuery.trim().length > 0;
 
     return (
-      <div className="space-y-4 animate-fadeIn" dir="rtl">
+      <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
         {/* Navigation Bar */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
           <button
@@ -664,16 +570,6 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
             {volMeta?.description}
           </p>
         </div>
-
-        {/* Search within Volume */}
-        <button
-          type="button"
-          onClick={() => openCompleteVolume(selectedVolume)}
-          className="w-full flex items-center justify-between gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold text-sm"
-        >
-          <span>خواندن متن کامل و اصلی جلد {toPersianDigits(selectedVolume)} (PDF، {toPersianDigits(PDF_VOLUMES[selectedVolume].pages)} صفحه)</span>
-          <FileText className="w-5 h-5 shrink-0" />
-        </button>
 
         {/* Search within selected rulings */}
         <div className="relative">
@@ -771,7 +667,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
   const isGlobalSearching = searchQuery.trim().length > 0;
 
   return (
-    <div className="space-y-4 animate-fadeIn" dir="rtl">
+    <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       {/* Top Header & Navigation */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <button
@@ -794,7 +690,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
         <div className="relative z-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/15 backdrop-blur-md rounded-full text-teal-300 text-xs font-bold">
             <Scale className="w-3.5 h-3.5" />
-            <span>رساله فقهی جامع • چاپ ۱۴۰۳</span>
+            <span>رساله فقهی جامع • مطابق فتاوای آیت‌الله العظمی سیستانی</span>
           </div>
 
           <h1 className="text-2xl md:text-3xl font-extrabold text-teal-300 font-serif leading-snug">
@@ -802,13 +698,13 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
           </h1>
 
           <p className="text-xs md:text-sm text-slate-200 max-w-xl mx-auto leading-relaxed">
-            متن اصلی و کامل هر چهار جلد در خود کتابخانه، به‌صورت نسخهٔ PDF بدون حذف یا خلاصه‌سازی
+            فهرست و متن احکام نمایه‌شده موجود در برنامه شامل ۴۲۷ مدخل و مسأله فقهی در ۴ جلد
           </p>
 
           <div className="inline-flex items-center gap-2 text-xs text-teal-200 bg-teal-900/50 border border-teal-500/30 px-3 py-1.5 rounded-xl backdrop-blur-sm">
             <span>دوره کامل ۴ جلد</span>
             <span>•</span>
-            <span>۲٬۹۱۲ صفحهٔ اصل کتاب</span>
+            <span>۴۲۷ مدخل و مسأله فقهی نمایه‌شده</span>
           </div>
         </div>
       </div>
@@ -820,7 +716,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="جستجو در نمایهٔ مسائل؛ برای متن کامل از دکمهٔ نسخهٔ اصلی هر جلد استفاده کنید..."
+          placeholder="جستجو در بین ۴۲۷ مسأله و باب فقهی چهار جلد توضیح المسائل جامع..."
           className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
         />
         {searchQuery && (
@@ -838,7 +734,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
       {isGlobalSearching ? (
         <div className="space-y-2">
           <div className="text-xs font-bold text-slate-500 px-1">
-            نتایج جستجو در مسائل منتخب چهار جلد: ({toPersianDigits(searchResults.length)} مورد)
+            نتایج جستجو در مسائل نمایه‌شده چهار جلد: ({toPersianDigits(searchResults.length)} مورد)
           </div>
           {searchResults.length > 0 ? (
             searchResults.map((it) => (
@@ -876,7 +772,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
             ))
           ) : (
             <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500">
-              در مسائل منتخب موردی یافت نشد؛ متن کامل را در PDF هر جلد ببینید.
+              در بین مسائل نمایه‌شده موردی مطابق عبارت جستجو یافت نشد.
             </div>
           )}
         </div>
@@ -894,7 +790,10 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
                 id={`btn-select-volume-${vol.volume}`}
                 type="button"
                 onClick={() => {
-                  openCompleteVolume(vol.volume);
+                  setSelectedVolume(vol.volume);
+                  setSelectedSection(null);
+                  setSearchQuery('');
+                  setCurrentStep('sections');
                 }}
                 className="w-full text-right p-5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700/80 shadow-xs hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer"
               >
@@ -904,7 +803,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
                       جلد {toPersianDigits(vol.volume)}
                     </span>
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      {toPersianDigits(vol.totalIssues)} مدخل نمایه
+                      {toPersianDigits(vol.totalIssues)} مسأله نمایه‌شده
                     </span>
                   </div>
 
@@ -918,7 +817,7 @@ export const TawzihMasailView: React.FC<TawzihMasailViewProps> = ({
                 </div>
 
                 <div className="pt-4 mt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs font-bold text-teal-700 dark:text-teal-400">
-                  <span>باز کردن نسخهٔ کامل و اصلی PDF</span>
+                  <span>مشاهده ابواب و احکام نمایه‌شده</span>
                   <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 </div>
               </button>

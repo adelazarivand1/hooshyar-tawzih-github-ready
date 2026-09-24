@@ -18,6 +18,7 @@ import { toPersianDigits } from '../../utils/persianNumber';
 interface NavbarProps {
   currentTab?: AppTab;
   activeTab?: AppTab;
+  isBooksOpen?: boolean;
   onSelectTab?: (tab: AppTab) => void;
   onTabChange?: (tab: AppTab) => void;
   onGoBack?: () => void;
@@ -41,6 +42,7 @@ const PRIMARY_TABS: { tab: AppTab; label: string; icon: React.ComponentType<{ cl
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   activeTab,
+  isBooksOpen = false,
   onSelectTab,
   onTabChange,
   onGoBack,
@@ -168,7 +170,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center justify-start gap-2 py-2 overflow-x-auto no-scrollbar">
             {PRIMARY_TABS.map((item) => {
               const Icon = item.icon;
-              const isActive = active === item.tab || (item.tab === 'more' && ['converter', 'notes', 'reminders', 'settings'].includes(active));
+              const isActive = (item.tab === 'library' && isBooksOpen) ||
+                (!isBooksOpen && active === item.tab) ||
+                (!isBooksOpen && item.tab === 'more' && ['converter', 'notes', 'reminders', 'settings'].includes(active));
               return (
                 <button
                   id={`nav-item-${item.tab}`}
@@ -189,33 +193,35 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </nav>
 
-      {/* Mobile Fixed 5-Item Navigation Bar */}
+      {/* Mobile Fixed 6-Item Single Row Navigation Bar */}
       <nav 
         id="mobile-bottom-navigation" 
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/98 backdrop-blur-xl border-t border-[#D9DED9] shadow-[0_-4px_18px_rgba(18,60,53,0.07)] px-2 pt-1.5"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/98 backdrop-blur-xl border-t border-[#D9DED9] shadow-[0_-4px_18px_rgba(18,60,53,0.07)] px-1 sm:px-2 pt-1"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)' }}
       >
-        <div className="grid grid-cols-5 items-center max-w-md mx-auto">
+        <div className="grid grid-cols-6 items-center w-full max-w-lg mx-auto">
           {PRIMARY_TABS.map((item) => {
             const Icon = item.icon;
-            const isActive = active === item.tab || (item.tab === 'more' && ['converter', 'notes', 'reminders', 'settings'].includes(active));
+            const isActive = (item.tab === 'library' && isBooksOpen) ||
+              (!isBooksOpen && active === item.tab) ||
+              (!isBooksOpen && item.tab === 'more' && ['converter', 'notes', 'reminders', 'settings'].includes(active));
             return (
               <button
                 id={`mobile-nav-${item.tab}`}
                 key={item.tab}
                 onClick={() => handleTabSelect(item.tab)}
-                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer min-h-[48px] ${
+                className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all cursor-pointer min-h-[46px] w-full ${
                   isActive ? 'text-[#123C35] font-bold' : 'text-[#59635F] hover:text-[#1C2523]'
                 }`}
               >
-                <div className={`p-1.5 rounded-xl transition-all ${
+                <div className={`p-1 sm:p-1.5 rounded-xl transition-all ${
                   isActive 
-                    ? 'bg-gradient-to-b from-[#1B5E52] to-[#123C35] text-[#C49A5A] shadow-[0_3px_8px_rgba(18,60,53,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] border border-[#0C2E29] scale-105' 
+                    ? 'bg-gradient-to-b from-[#1B5E52] to-[#123C35] text-[#C49A5A] shadow-[0_2px_6px_rgba(18,60,53,0.2),inset_0_1px_0_rgba(255,255,255,0.2)] border border-[#0C2E29] scale-105' 
                     : 'bg-transparent text-[#59635F]'
                 }`}>
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <span className={`text-[11px] mt-0.5 whitespace-nowrap leading-tight ${isActive ? 'font-bold text-[#123C35]' : 'text-[#59635F]'}`}>
+                <span className={`text-[10px] sm:text-[11px] mt-0.5 whitespace-nowrap leading-none truncate max-w-full text-center ${isActive ? 'font-bold text-[#123C35]' : 'text-[#59635F]'}`}>
                   {item.label}
                 </span>
               </button>

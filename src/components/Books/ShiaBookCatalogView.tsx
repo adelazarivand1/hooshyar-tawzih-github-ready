@@ -156,7 +156,7 @@ export const ShiaBookCatalogView: React.FC<ShiaBookCatalogViewProps> = ({
   const displayedItems = filteredItems.slice(0, visibleCount);
 
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0">
       {/* Top App Bar & Navigation */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <button

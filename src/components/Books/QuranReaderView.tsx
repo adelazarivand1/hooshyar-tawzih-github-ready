@@ -106,6 +106,8 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
   const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isFallbackUsedRef = useRef<boolean>(false);
+  const playTokenRef = useRef<number>(0);
+  const isPlaybackCancelledRef = useRef<boolean>(false);
 
   // Helper to format mm:ss in Persian
   const formatAudioTime = (seconds: number) => {
@@ -118,11 +120,28 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
 
   // Stop and release audio completely
   const stopAudio = () => {
+    playTokenRef.current++;
+    isPlaybackCancelledRef.current = true;
     if (audioRef.current) {
+      const audio = audioRef.current;
+      audio.onplay = null;
+      audio.onpause = null;
+      audio.onwaiting = null;
+      audio.onplaying = null;
+      audio.oncanplay = null;
+      audio.ontimeupdate = null;
+      audio.onloadedmetadata = null;
+      audio.onended = null;
+      audio.onerror = null;
       try {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      } catch (e) {}
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute('src');
+        audio.load();
+      } catch (e) {
+        // ignore
+      }
+      audioRef.current = null;
     }
     setIsPlayingAudio(false);
     setIsLoadingAudio(false);
@@ -135,10 +154,6 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
     setIsLoading(true);
     setAudioError(null);
     stopAudio();
-    if (audioRef.current) {
-      audioRef.current.src = '';
-      audioRef.current = null;
-    }
 
     fetchSurahFullData(surahNumber).then(data => {
       if (isMounted) {
@@ -158,10 +173,6 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
     return () => {
       isMounted = false;
       stopAudio();
-      if (audioRef.current) {
-        audioRef.current.src = '';
-        audioRef.current = null;
-      }
     };
   }, [surahNumber]);
 
@@ -275,39 +286,74 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
       return;
     }
 
-    const audio = getOrCreateAudio();
-
     if (isPlayingAudio) {
-      audio.pause();
-      setIsPlayingAudio(false);
-    } else {
-      setIsLoadingAudio(true);
-      const reciter = getActiveReciter();
-      const targetUrl = isFallbackUsedRef.current && reciter.fallbackUrl 
-        ? reciter.fallbackUrl(surahNumber) 
-        : reciter.getUrl(surahNumber);
+      stopAudio();
+      return;
+    }
 
-      if (!audio.src || !audio.src.includes('.mp3')) {
-        audio.src = targetUrl;
-      }
+    const currentToken = ++playTokenRef.current;
+    isPlaybackCancelledRef.current = false;
+    setIsLoadingAudio(true);
 
-      audio.play().then(() => {
-        setIsPlayingAudio(true);
-        setIsLoadingAudio(false);
-      }).catch(err => {
-        console.warn('Audio play error:', err);
-        setIsPlayingAudio(false);
-        setIsLoadingAudio(false);
-        if (reciter.fallbackUrl && !isFallbackUsedRef.current) {
-          isFallbackUsedRef.current = true;
-          audio.src = reciter.fallbackUrl(surahNumber);
-          audio.play().catch(() => {
-            setAudioError('برای تلاوت صوتی به اینترنت نیاز است. متن و ترجمه سوره کاملاً آفلاین در دسترس است.');
-          });
-        } else {
-          setAudioError('پخش صوت نیازمند اتصال اینترنت است. تمام متون و ترجمه‌ها آفلاین هستند.');
-        }
-      });
+    const reciter = getActiveReciter();
+    const targetUrl = isFallbackUsedRef.current && reciter.fallbackUrl 
+      ? reciter.fallbackUrl(surahNumber) 
+      : reciter.getUrl(surahNumber);
+
+    const audio = getOrCreateAudio();
+    if (!audio.src || !audio.src.includes('.mp3')) {
+      audio.src = targetUrl;
+    }
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) {
+            try {
+              audio.pause();
+              audio.currentTime = 0;
+            } catch (e) {}
+            return;
+          }
+          setIsPlayingAudio(true);
+          setIsLoadingAudio(false);
+        })
+        .catch(err => {
+          if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) {
+            return;
+          }
+          console.warn('Audio play error:', err);
+          setIsPlayingAudio(false);
+          setIsLoadingAudio(false);
+
+          if (reciter.fallbackUrl && !isFallbackUsedRef.current) {
+            isFallbackUsedRef.current = true;
+            if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) return;
+            audio.src = reciter.fallbackUrl(surahNumber);
+            const fallbackPromise = audio.play();
+            if (fallbackPromise !== undefined) {
+              fallbackPromise
+                .then(() => {
+                  if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) {
+                    try {
+                      audio.pause();
+                      audio.currentTime = 0;
+                    } catch (e) {}
+                    return;
+                  }
+                  setIsPlayingAudio(true);
+                  setIsLoadingAudio(false);
+                })
+                .catch(() => {
+                  if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) return;
+                  setAudioError('برای تلاوت صوتی به اینترنت نیاز است. متن و ترجمه سوره کاملاً آفلاین در دسترس است.');
+                });
+            }
+          } else {
+            setAudioError('پخش صوت نیازمند اتصال اینترنت است. تمام متون و ترجمه‌ها آفلاین هستند.');
+          }
+        });
     }
   };
 
@@ -326,18 +372,30 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
     const wasPlaying = isPlayingAudio;
     stopAudio();
 
-    const newReciter = RECITERS.find(r => r.id === reciterId) || RECITERS[0];
-    isFallbackUsedRef.current = false;
+    if (wasPlaying) {
+      const reciter = RECITERS.find(r => r.id === reciterId) || RECITERS[0];
+      const currentToken = ++playTokenRef.current;
+      isPlaybackCancelledRef.current = false;
+      setIsLoadingAudio(true);
 
-    if (audioRef.current) {
-      audioRef.current.src = newReciter.getUrl(surahNumber);
-      if (wasPlaying) {
-        setIsLoadingAudio(true);
-        audioRef.current.play().catch(() => {
+      const audio = getOrCreateAudio();
+      audio.src = reciter.getUrl(surahNumber);
+      audio.play()
+        .then(() => {
+          if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) {
+            try {
+              audio.pause();
+            } catch (e) {}
+            return;
+          }
+          setIsPlayingAudio(true);
+          setIsLoadingAudio(false);
+        })
+        .catch(() => {
+          if (playTokenRef.current !== currentToken || isPlaybackCancelledRef.current) return;
           setIsPlayingAudio(false);
           setIsLoadingAudio(false);
         });
-      }
     }
   };
 
@@ -402,14 +460,17 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-4 animate-fadeIn w-full max-w-full overflow-x-hidden min-w-0">
       {/* Top App Bar & Navigation */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {onBackToShelf && (
             <button
               type="button"
-              onClick={onBackToShelf}
+              onClick={() => {
+                stopAudio();
+                onBackToShelf();
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors"
             >
               <span>قفسه کتابخانه</span>
@@ -418,7 +479,10 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
 
           <button
             type="button"
-            onClick={onBackToCatalog}
+            onClick={() => {
+              stopAudio();
+              onBackToCatalog();
+            }}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold text-xs transition-colors"
           >
             <ArrowRight className="w-4 h-4" />
@@ -774,7 +838,10 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
         {surahNumber > 1 ? (
           <button
             type="button"
-            onClick={() => onSelectSurah(surahNumber - 1)}
+            onClick={() => {
+              stopAudio();
+              onSelectSurah(surahNumber - 1);
+            }}
             className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
           >
             <ChevronRight className="w-4 h-4" />
@@ -788,7 +855,10 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
           {onBackToShelf && (
             <button
               type="button"
-              onClick={onBackToShelf}
+              onClick={() => {
+                stopAudio();
+                onBackToShelf();
+              }}
               className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
             >
               قفسه کتابخانه
@@ -797,7 +867,10 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
 
           <button
             type="button"
-            onClick={onBackToCatalog}
+            onClick={() => {
+              stopAudio();
+              onBackToCatalog();
+            }}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
           >
             فهرست سوره‌ها
@@ -807,7 +880,10 @@ export const QuranReaderView: React.FC<QuranReaderViewProps> = ({
         {surahNumber < 114 ? (
           <button
             type="button"
-            onClick={() => onSelectSurah(surahNumber + 1)}
+            onClick={() => {
+              stopAudio();
+              onSelectSurah(surahNumber + 1);
+            }}
             className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
           >
             <span>سوره بعدی ({surahNumber + 1})</span>

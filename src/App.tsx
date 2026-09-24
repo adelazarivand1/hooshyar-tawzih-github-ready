@@ -138,6 +138,12 @@ export function App() {
   const applyDeepLink = useCallback((rawUrl: string) => {
     const target = parseDeepLink(rawUrl);
     if (!target) return;
+    if (target.tab === 'library') {
+      setBooksDeepLink(null);
+      setBooksViewLevel('shelf');
+      setIsBooksOpen(true);
+      return;
+    }
     setActiveTab(target.tab);
     setNavigationHistory(target.tab === 'home' ? ['home'] : ['home', target.tab]);
     if (target.tab === 'calendar') {
@@ -340,12 +346,13 @@ export function App() {
 
   // Android Hardware Back Button Handler & Navigation History
   const handleNavigateTab = useCallback((tab: AppTab) => {
-    if (tab === activeTab) return;
     if (tab === 'library') {
       setBooksDeepLink(null);
       setBooksViewLevel('shelf');
       setIsBooksOpen(true);
+      return;
     }
+    if (tab === activeTab) return;
     setActiveTab(tab);
     setNavigationHistory(prev => [...prev, tab]);
     try {
@@ -799,6 +806,7 @@ export function App() {
       {/* 3. Main Navigation Bar (5 Primary Tabs) */}
       <Navbar
         activeTab={activeTab}
+        isBooksOpen={isBooksOpen}
         onSelectTab={handleNavigateTab}
         canGoBack={navigationHistory.length > 1}
         onGoBack={handleGoBack}
@@ -811,7 +819,7 @@ export function App() {
 
       {/* 4. Tab Views Container */}
       <main id="app-main-content-view" className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 pb-28">
-        {activeTab === 'home' && (
+        {(activeTab === 'home' || activeTab === 'library') && (
           <HomeView
             todayInfo={todayInfo}
             onNavigateTab={handleNavigateTab}

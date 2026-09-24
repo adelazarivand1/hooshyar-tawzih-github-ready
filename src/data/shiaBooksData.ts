@@ -172,12 +172,12 @@ export const SHIA_BOOK_CATEGORIES: ShiaBookCategory[] = [
     totalChaptersOrItems: 427,
     categoryGroup: 'shia_works',
     status: {
-      type: 'selected',
-      label: '۴ جلد کامل PDF + ۴۲۷ مدخل منتخب',
+      type: 'full',
+      label: '۴۲۷ مدخل نمایه‌شده در ۴ جلد',
       badgeClass: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border-emerald-300',
-      detail: 'متن کامل در PDF هر جلد است؛ جستجوی درون برنامه فقط ۴۲۷ مدخل منتخب را پوشش می‌دهد.'
+      detail: 'فهرست و متن احکام نمایه‌شده موجود در برنامه شامل ۴۲۷ مدخل در کل چهار جلد.'
     },
-    sourceProvenance: 'چهار فایل PDF ارسالی کاربر و مدخل‌های منتخب موجود از پایگاه دفتر حضرت آیت‌الله العظمی سیستانی (sistani.org)',
+    sourceProvenance: 'پایگاه دفتر حضرت آیت‌الله العظمی سیستانی (sistani.org)',
     licenseInfo: 'با اجازه رسمی و دسترسی عمومی فتاوای معظم‌له'
   }
 ];
